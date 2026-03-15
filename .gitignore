@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project
+uploads/
+output/
+separated/
+*.mp3
+*.wav
+*.flac
+*.ogg
+*.m4a
+*.gp5
+*.gp4
+*.gp3
+
+# Demucs model cache
+pretrained/
