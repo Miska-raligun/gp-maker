@@ -60,7 +60,7 @@ usage: gp-maker [-h] [-o OUTPUT] [--bpm BPM] [--stem {vocals,guitar}]
 Convert audio files to Guitar Pro (.gp5) tablature.
 
 positional arguments:
-  input                 Input audio file path (MP3, WAV, FLAC, etc.)
+  input                 Input audio file path (MP3, WAV, FLAC, M4A, OGG, etc.)
 
 options:
   -o, --output          Output .gp5 file path (default: <input_name>.gp5)
@@ -75,7 +75,7 @@ options:
 ## Processing Pipeline
 
 ```
-Audio file (MP3/WAV/FLAC)
+Audio file (MP3/WAV/FLAC/M4A/OGG/...)
     |
     v
 [1] Stem Separation (Demucs)
@@ -120,6 +120,9 @@ python -m gp_maker song.mp3 -o vocal_tab.gp5
 # Pre-isolated guitar audio (skip separation)
 python -m gp_maker guitar_only.wav --stem guitar --no-separate
 
+# Apple Music m4a file → lead guitar tab
+python -m gp_maker song.m4a --stem guitar -o guitar_tab.gp5
+
 # Override tempo and title
 python -m gp_maker song.mp3 --stem guitar --bpm 120 --title "Hotel California"
 ```
@@ -142,9 +145,34 @@ Generates `.gp5` (Guitar Pro 5) files, compatible with:
 | `torch` | Deep learning backend |
 | `tqdm` | Progress display |
 
+## Supported Audio Formats
+
+| Format | Extension | Notes |
+|--------|-----------|-------|
+| MP3 | `.mp3` | Works out of the box |
+| WAV | `.wav` | Works out of the box |
+| FLAC | `.flac` | Works out of the box |
+| M4A/AAC | `.m4a`, `.aac` | Requires ffmpeg |
+| OGG | `.ogg` | Works out of the box |
+| WMA | `.wma` | Requires ffmpeg |
+| Opus | `.opus` | Requires ffmpeg |
+
+For m4a/aac/wma/opus files, install ffmpeg:
+```bash
+# Ubuntu/Debian
+sudo apt install ffmpeg
+
+# macOS
+brew install ffmpeg
+
+# Windows
+winget install ffmpeg
+```
+
 ## Requirements
 
 - Python 3.10+
+- ffmpeg (for m4a/aac/wma formats; startup scripts will warn if missing)
 - ~4GB disk space (for ML models on first run)
 - GPU optional (CPU works, but slower for Demucs separation)
 

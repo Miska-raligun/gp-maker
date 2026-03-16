@@ -52,6 +52,13 @@ setup() {
     "$PYTHON" -m pip install --upgrade pip -q
     "$PYTHON" -m pip install -r "$SCRIPT_DIR/requirements.txt" -q
 
+    # Check ffmpeg (needed for m4a/aac/wma)
+    if ! command -v ffmpeg &>/dev/null; then
+        echo
+        info "ffmpeg not found. It is needed for m4a/aac/wma files."
+        info "Install: sudo apt install ffmpeg  (or: brew install ffmpeg)"
+    fi
+
     ok "Setup complete."
     echo
 }

@@ -99,6 +99,14 @@ if !errorlevel! neq 0 (
     exit /b 1
 )
 
+REM Check ffmpeg
+where ffmpeg >nul 2>&1
+if !errorlevel! neq 0 (
+    echo.
+    echo [INFO]  ffmpeg not found. It is needed for m4a/aac/wma files.
+    echo [INFO]  Install: winget install ffmpeg
+)
+
 echo [OK]    Setup complete.
 echo.
 exit /b 0

@@ -1,11 +1,27 @@
 """CLI entry point for GP-Maker."""
 
 import argparse
+import shutil
 import sys
 from pathlib import Path
 
 from gp_maker import __version__
 from gp_maker.pipeline import process
+
+SUPPORTED_EXTENSIONS = {".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac", ".wma", ".opus"}
+
+
+def _check_ffmpeg() -> None:
+    """Warn if ffmpeg is not installed (needed for m4a/aac/wma decoding)."""
+    if shutil.which("ffmpeg") is None:
+        print(
+            "Warning: ffmpeg not found. It is required for m4a/aac/wma files.\n"
+            "  Install: https://ffmpeg.org/download.html\n"
+            "  Ubuntu/Debian: sudo apt install ffmpeg\n"
+            "  macOS:         brew install ffmpeg\n"
+            "  Windows:       winget install ffmpeg\n",
+            file=sys.stderr,
+        )
 
 
 def main() -> None:
@@ -15,7 +31,7 @@ def main() -> None:
     )
     parser.add_argument(
         "input",
-        help="Input audio file path (MP3, WAV, FLAC, etc.)",
+        help="Input audio file path (MP3, WAV, FLAC, M4A, OGG, etc.)",
     )
     parser.add_argument(
         "-o", "--output",
@@ -56,6 +72,18 @@ def main() -> None:
     if not input_path.exists():
         print(f"Error: Input file not found: {input_path}", file=sys.stderr)
         sys.exit(1)
+
+    ext = input_path.suffix.lower()
+    if ext not in SUPPORTED_EXTENSIONS:
+        print(
+            f"Warning: Unrecognized audio format '{ext}'. "
+            f"Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}",
+            file=sys.stderr,
+        )
+
+    # Check ffmpeg for formats that need it
+    if ext in {".m4a", ".aac", ".wma", ".opus"}:
+        _check_ffmpeg()
 
     # Determine output path
     if args.output:
