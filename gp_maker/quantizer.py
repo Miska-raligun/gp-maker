@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from gp_maker.config import (
     DEFAULT_BPM,
+    MAX_CHORD_NOTES,
     MIN_NOTE_DURATION_S,
     QUANTIZE_RESOLUTION,
 )
@@ -28,12 +29,15 @@ class QuantizedNote:
     is_rest: bool = False
 
 
-def quantize_notes(notes: list[DetectedNote], bpm: float) -> list[QuantizedNote]:
+def quantize_notes(notes: list[DetectedNote], bpm: float,
+                    allow_polyphony: bool = False) -> list[QuantizedNote]:
     """Quantize detected notes to the beat grid.
 
     Args:
         notes: List of detected notes with timestamps.
         bpm: Beats per minute.
+        allow_polyphony: If True, keep simultaneous notes (chords) instead
+            of removing overlaps. Used for guitar extraction mode.
 
     Returns:
         List of quantized notes aligned to the beat grid.
@@ -68,9 +72,13 @@ def quantize_notes(notes: list[DetectedNote], bpm: float) -> list[QuantizedNote]
             velocity=velocity,
         ))
 
-    # Sort by start position and remove overlaps
-    result.sort(key=lambda n: n.start_beat)
-    result = _remove_overlaps(result, bpm)
+    # Sort by start position (and pitch for chord grouping)
+    result.sort(key=lambda n: (n.start_beat, n.midi_pitch))
+
+    if allow_polyphony:
+        result = _limit_chord_size(result)
+    else:
+        result = _remove_overlaps(result, bpm)
 
     return result
 
@@ -120,3 +128,34 @@ def _duration_value_to_beats(duration_value: int) -> float:
     """Convert GP duration value back to beats."""
     mapping = {1: 4.0, 2: 2.0, 4: 1.0, 8: 0.5, 16: 0.25}
     return mapping.get(duration_value, 1.0)
+
+
+def _limit_chord_size(notes: list[QuantizedNote]) -> list[QuantizedNote]:
+    """Limit simultaneous notes at each grid position to MAX_CHORD_NOTES.
+
+    When more than 6 notes fall on the same beat, keep the ones with
+    highest velocity. This ensures playability on a 6-string guitar.
+    """
+    if not notes:
+        return notes
+
+    result = []
+    i = 0
+    while i < len(notes):
+        # Collect all notes at the same beat position
+        group = [notes[i]]
+        j = i + 1
+        while j < len(notes) and abs(notes[j].start_beat - notes[i].start_beat) < 0.01:
+            group.append(notes[j])
+            j += 1
+
+        if len(group) > MAX_CHORD_NOTES:
+            # Keep the loudest notes
+            group.sort(key=lambda n: n.velocity, reverse=True)
+            group = group[:MAX_CHORD_NOTES]
+            group.sort(key=lambda n: n.midi_pitch)
+
+        result.extend(group)
+        i = j
+
+    return result

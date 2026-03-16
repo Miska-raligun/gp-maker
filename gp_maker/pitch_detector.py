@@ -8,20 +8,25 @@ from gp_maker.config import DEFAULT_BPM, MIN_NOTE_AMPLITUDE
 from gp_maker.quantizer import DetectedNote
 
 
-def detect_notes(audio_path: str) -> list[DetectedNote]:
+def detect_notes(audio_path: str,
+                  min_amplitude: float | None = None) -> list[DetectedNote]:
     """Detect notes from an audio file using basic-pitch.
 
     Args:
         audio_path: Path to audio file (WAV/MP3).
+        min_amplitude: Minimum amplitude threshold. Uses MIN_NOTE_AMPLITUDE if None.
 
     Returns:
         List of detected notes with timing and pitch info.
     """
+    if min_amplitude is None:
+        min_amplitude = MIN_NOTE_AMPLITUDE
+
     model_output, midi_data, note_events = predict(audio_path)
 
     notes = []
     for start_s, end_s, midi_pitch, amplitude, pitch_bends in note_events:
-        if amplitude < MIN_NOTE_AMPLITUDE:
+        if amplitude < min_amplitude:
             continue
 
         notes.append(DetectedNote(

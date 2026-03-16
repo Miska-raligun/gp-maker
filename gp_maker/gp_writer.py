@@ -19,17 +19,27 @@ class TabNote:
 
 
 def create_gp5(notes: list[TabNote], output_path: str, title: str = "Transcribed Tab",
-               bpm: int = DEFAULT_BPM) -> None:
-    """Create a GP5 file from a list of TabNote objects."""
+               bpm: int = DEFAULT_BPM, track_name: str = "Vocal Melody",
+               instrument: int = 25) -> None:
+    """Create a GP5 file from a list of TabNote objects.
+
+    Args:
+        notes: List of TabNote objects (may contain chords: multiple notes
+            at the same start_beat).
+        output_path: Path for the output .gp5 file.
+        title: Song title.
+        bpm: Tempo in beats per minute.
+        track_name: Name for the guitar track.
+        instrument: MIDI instrument number (25=acoustic steel, 27=electric clean).
+    """
     song = guitarpro.Song()
     song.title = title
     song.artist = "GP-Maker"
     song.tempo = bpm
 
-    # Configure the default track as acoustic guitar
     track = song.tracks[0]
-    track.name = "Vocal Melody"
-    track.channel.instrument = 25  # Acoustic Guitar (steel)
+    track.name = track_name
+    track.channel.instrument = instrument
     track.strings = [guitarpro.GuitarString(n, v) for n, v in sorted(STANDARD_TUNING.items())]
 
     beats_per_measure = DEFAULT_TIME_SIGNATURE[0]
@@ -38,41 +48,70 @@ def create_gp5(notes: list[TabNote], output_path: str, title: str = "Transcribed
         _write_empty_song(song, output_path)
         return
 
-    # Group notes by measure
+    # Group notes by start_beat to handle chords (multiple notes on same beat)
+    beat_groups = _group_by_beat(notes)
+
     max_beat = max(n.start_beat for n in notes)
     total_measures = int(max_beat // beats_per_measure) + 1
 
-    # Ensure we have enough measure headers
     _ensure_measures(song, track, total_measures)
 
-    # Place notes into measures
-    for note in notes:
-        measure_idx = int((note.start_beat - 1) // beats_per_measure)
+    # Place beat groups into measures
+    for start_beat, group_notes in beat_groups:
+        measure_idx = int((start_beat - 1) // beats_per_measure)
         if measure_idx >= len(track.measures):
             continue
 
         measure = track.measures[measure_idx]
         voice = measure.voices[0]
 
+        # Use the duration of the first note in the group
         beat = guitarpro.Beat(voice)
-        beat.duration.value = note.duration_value
+        beat.duration.value = group_notes[0].duration_value
 
-        if note.is_rest:
+        if group_notes[0].is_rest:
             beat.status = guitarpro.BeatStatus.rest
         else:
             beat.status = guitarpro.BeatStatus.normal
-            gp_note = guitarpro.Note(beat)
-            gp_note.string = note.string
-            gp_note.value = note.fret
-            gp_note.velocity = _velocity_to_gp(note.velocity)
-            beat.notes.append(gp_note)
+            for note in group_notes:
+                if note.is_rest:
+                    continue
+                gp_note = guitarpro.Note(beat)
+                gp_note.string = note.string
+                gp_note.value = note.fret
+                gp_note.velocity = _velocity_to_gp(note.velocity)
+                beat.notes.append(gp_note)
 
         voice.beats.append(beat)
 
-    # Remove default empty beats from voices that got notes
     _clean_default_beats(track)
-
     guitarpro.write(song, output_path)
+
+
+def _group_by_beat(notes: list[TabNote]) -> list[tuple[float, list[TabNote]]]:
+    """Group notes by their start_beat position.
+
+    Notes at the same beat position form a chord (played simultaneously).
+    Returns a list of (start_beat, [notes]) tuples, sorted by beat position.
+    """
+    if not notes:
+        return []
+
+    sorted_notes = sorted(notes, key=lambda n: (n.start_beat, n.string))
+    groups = []
+    current_beat = sorted_notes[0].start_beat
+    current_group = [sorted_notes[0]]
+
+    for note in sorted_notes[1:]:
+        if abs(note.start_beat - current_beat) < 0.01:
+            current_group.append(note)
+        else:
+            groups.append((current_beat, current_group))
+            current_beat = note.start_beat
+            current_group = [note]
+
+    groups.append((current_beat, current_group))
+    return groups
 
 
 def _ensure_measures(song: guitarpro.Song, track: guitarpro.Track,

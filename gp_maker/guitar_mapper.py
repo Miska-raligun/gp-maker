@@ -41,6 +41,52 @@ def clamp_to_guitar_range(midi_pitch: int) -> int:
     return midi_pitch
 
 
+def map_chord(midi_pitches: list[int]) -> list[tuple[int, int]]:
+    """Map multiple simultaneous MIDI notes to guitar positions without string conflicts.
+
+    Strategy: sort notes low-to-high, assign to strings low (6) to high (1),
+    using greedy allocation to avoid placing two notes on the same string.
+
+    Args:
+        midi_pitches: List of MIDI pitch values (simultaneous notes).
+
+    Returns:
+        List of (string, fret) tuples. Notes that cannot be placed are dropped.
+    """
+    if not midi_pitches:
+        return []
+
+    # Single note: use standard mapping
+    if len(midi_pitches) == 1:
+        return [midi_to_guitar(midi_pitches[0])]
+
+    # Sort low to high
+    sorted_pitches = sorted(midi_pitches)
+    used_strings = set()
+    result = []
+
+    for pitch in sorted_pitches:
+        pitch = clamp_to_guitar_range(pitch)
+
+        # Find all valid positions, prefer lower strings for lower notes
+        candidates = []
+        for string_num, open_pitch in STANDARD_TUNING.items():
+            fret = pitch - open_pitch
+            if 0 <= fret <= MAX_FRET and string_num not in used_strings:
+                candidates.append((string_num, fret))
+
+        if not candidates:
+            continue
+
+        # Prefer: higher string number (lower pitch string) first, then lower fret
+        candidates.sort(key=lambda sf: (-sf[0], sf[1]))
+        chosen = candidates[0]
+        used_strings.add(chosen[0])
+        result.append(chosen)
+
+    return result
+
+
 def midi_to_note_name(midi_pitch: int) -> str:
     """Convert MIDI pitch to note name (e.g., 60 → 'C4')."""
     note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']

@@ -31,9 +31,18 @@ MIN_NOTE_DURATION_S = 0.03  # 30ms
 # Minimum amplitude from basic-pitch to consider a note valid
 MIN_NOTE_AMPLITUDE = 0.3
 
+# Lower threshold for guitar (harmonics and overtones are quieter)
+MIN_NOTE_AMPLITUDE_GUITAR = 0.2
+
+# Demucs 6-stem model (has dedicated guitar stem)
+DEMUCS_6S_MODEL = "htdemucs_6s"
+
+# Maximum simultaneous notes in a chord (one per string)
+MAX_CHORD_NOTES = 6
+
 # Pipeline step names for progress display
 PIPELINE_STEPS = [
-    "Separating vocals",
+    "Separating stem",
     "Detecting pitch",
     "Quantizing notes",
     "Mapping to guitar",

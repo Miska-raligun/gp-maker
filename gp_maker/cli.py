@@ -28,9 +28,15 @@ def main() -> None:
         help="Manual BPM override (auto-detected if not specified)",
     )
     parser.add_argument(
+        "--stem",
+        choices=["vocals", "guitar"],
+        default="vocals",
+        help="Which stem to extract and transcribe (default: vocals)",
+    )
+    parser.add_argument(
         "--no-separate",
         action="store_true",
-        help="Skip vocal separation (use when input is already isolated vocals)",
+        help="Skip stem separation (use when input is already an isolated stem)",
     )
     parser.add_argument(
         "--title",
@@ -63,10 +69,11 @@ def main() -> None:
     print(f"GP-Maker v{__version__}", file=sys.stderr)
     print(f"  Input:  {input_path}", file=sys.stderr)
     print(f"  Output: {output_path}", file=sys.stderr)
+    print(f"  Stem:   {args.stem}", file=sys.stderr)
     if args.bpm:
         print(f"  BPM:    {args.bpm}", file=sys.stderr)
     if args.no_separate:
-        print(f"  Vocal separation: skipped", file=sys.stderr)
+        print(f"  Stem separation: skipped", file=sys.stderr)
     print(file=sys.stderr)
 
     try:
@@ -76,6 +83,7 @@ def main() -> None:
             title=title,
             bpm=args.bpm,
             skip_separation=args.no_separate,
+            stem=args.stem,
         )
     except KeyboardInterrupt:
         print("\nAborted.", file=sys.stderr)
